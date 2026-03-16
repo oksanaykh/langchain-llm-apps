@@ -34,6 +34,7 @@ LangChain.
 * temperature
 * управление детерминированностью
 * prompt engineering
+* прямые вызовы OpenAI API и их сравнение с LangChain-абстракциями
 
 ---
 
@@ -43,7 +44,7 @@ LangChain.
 
 * `ChatPromptTemplate`
 * системные инструкции
-* reusable prompts
+* reusable prompts с динамической подстановкой переменных
 
 ---
 
@@ -51,48 +52,65 @@ LangChain.
 
 Преобразование ответа LLM в структурированные данные:
 
-* `StructuredOutputParser`
-* `ResponseSchema`
+* `JsonOutputParser`
+* извлечение структурированных полей из текстового ответа модели
+
+---
+
+### LCEL (LangChain Expression Language)
+
+Современный способ построения пайплайнов через оператор `|`:
+
+```
+Prompt Template | Model | Output Parser
+```
+
+* модульная и читаемая композиция цепочек
+* используется во всех ноутбуках курса (L1–L3)
 
 ---
 
 ### Memory
 
-Управление историей диалога:
+Управление историей диалога с использованием современного API LangChain:
 
-* ConversationBufferMemory
-* ConversationBufferWindowMemory
-* ConversationTokenBufferMemory
-* ConversationSummaryBufferMemory
+* `RunnableWithMessageHistory` — подключение истории к цепочке
+* `trim_messages` — ограничение контекста по количеству токенов
+* **Buffer Memory** — хранение полной истории диалога
+* **Window Memory** — хранение последних K сообщений (скользящее окно)
+* **Token-Limited Memory** — ограничение по бюджету токенов
+* **Summary Memory** — сжатие длинной истории через суммаризацию
 
 ---
 
 ### Chains
 
-Создание пайплайнов обработки:
+Создание многошаговых пайплайнов обработки через LCEL:
 
-* `LLMChain`
-* `SequentialChain`
-* `SimpleSequentialChain`
-* `RouterChain`
+* **LLMChain** — базовая цепочка: prompt → model → parser
+* **SimpleSequentialChain** — линейная последовательность шагов
+* **SequentialChain** — поддержка нескольких входов и выходов между шагами
+* **RouterChain** — динамический выбор цепочки в зависимости от входа
+
+Пример SequentialChain из ноутбука: перевод отзыва → суммаризация → определение языка → генерация ответа
 
 ---
 
 ### RAG (Retrieval Augmented Generation)
 
-Реализация question-answering систем:
+Реализация question-answering систем над документами:
 
-* document loaders
-* embeddings
-* vector stores
-* similarity search
+* document loaders — загрузка источников (`OutdoorClothingCatalog_1000.csv`)
+* `RecursiveCharacterTextSplitter` — разбивка документов на чанки
+* embeddings — векторное представление текста (`OpenAIEmbeddings`)
+* **FAISS** — векторное хранилище для similarity search
+* retriever — поиск релевантных фрагментов по запросу
+* QA chain — генерация ответа на основе retrieved-контекста
 
-Методы обработки документов:
-
-* Stuff
-* Map Reduce
-* Refine
-* Map Rerank
+RAG-архитектура:
+```
+User Question → Embedding → Vector Search → Relevant Chunks → LLM → Answer
+```
 
 ---
 
@@ -100,10 +118,10 @@ LangChain.
 
 Тестирование LLM-приложений:
 
-* `QAGenerateChain`
-* `QAEvalChain`
-* LLM-as-a-judge
-* debugging (`langchain.debug`)
+* ручное составление оценочных примеров (question–answer pairs)
+* автогенерация тестовых примеров с помощью LLM из документов
+* **LLM-as-a-judge** — оценка качества ответов другой языковой моделью
+* анализ результатов: какие вопросы решены корректно, где ошибки
 
 ---
 
@@ -111,17 +129,20 @@ LangChain.
 
 LLM как механизм принятия решений.
 
-Используемый агент:
+Используемый подход:
 
+* `create_react_agent` + `AgentExecutor` — современный API LangChain
+
+Кастомные инструменты через декоратор `@tool`:
+
+* `calculator` — вычисление математических выражений
+* `wikipedia_search` — поиск по Википедии
+* `time` — получение текущей даты
+
+Логика работы агента (ReAct loop):
 ```
-CHAT_ZERO_SHOT_REACT_DESCRIPTION
+Thought → Action → Observation → Thought → ... → Final Answer
 ```
-
-Поддержка внешних инструментов:
-
-* Wikipedia
-* DuckDuckGo
-* custom tools через `@tool`
 
 ---
 
@@ -131,18 +152,15 @@ CHAT_ZERO_SHOT_REACT_DESCRIPTION
 langchain-course/
 │
 ├── notebooks/
-│   ├── 01_models_prompts_parsers.ipynb
-│   ├── 02_memory.ipynb
-│   ├── 03_chains.ipynb
-│   ├── 04_question_answering_rag.ipynb
-│   ├── 05_evaluation.ipynb
-│   └── 06_agents.ipynb
+│   ├── L1-Model_prompt_parser.ipynb
+│   ├── L2-Memory.ipynb
+│   ├── L3-Chains.ipynb
+│   ├── L4-QnA.ipynb
+│   ├── L5-Evaluation.ipynb
+│   └── L6-Agents.ipynb
 │
 ├── data/
-│   └── example_documents.csv
-│
-├── utils/
-│   └── helper_functions.py
+│   └── OutdoorClothingCatalog_1000.csv
 │
 └── README.md
 ```
@@ -151,10 +169,11 @@ langchain-course/
 
 # Tech Stack
 
-* Python
-* LangChain
-* OpenAI API
-* Vector Embeddings
+* Python 3.10+
+* LangChain (LCEL, modern API)
+* OpenAI API (`gpt-3.5-turbo` / `gpt-4`)
+* OpenAI Embeddings
+* FAISS (vector store)
 * RAG architecture
 * Prompt Engineering
 
@@ -162,21 +181,27 @@ langchain-course/
 
 # Ключевые концепции
 
+**LCEL (LangChain Expression Language)**
+Синтаксис `|` для построения модульных цепочек: `prompt | model | parser`.
+
 **Embeddings**
-Векторное представление смысла текста.
+Векторное представление смысла текста; основа семантического поиска.
 
 **Vector Stores**
-Базы данных для хранения embeddings и similarity search.
+Базы данных для хранения embeddings и выполнения similarity search. В курсе используется FAISS.
 
 **Tokens**
-Базовая единица текста для LLM.
+Базовая единица текста для LLM; управление токенами критично для memory и RAG.
 
 **ReAct Framework**
-Стратегия prompting, объединяющая:
+Стратегия prompting для агентов, объединяющая:
 
 ```
 Thought → Action → Observation
 ```
+
+**LLM-as-a-judge**
+Использование языковой модели для автоматической оценки качества ответов другой модели.
 
 ---
 
@@ -190,4 +215,3 @@ Thought → Action → Observation
 * эксперименты с RAG и агентами
 
 ---
-
